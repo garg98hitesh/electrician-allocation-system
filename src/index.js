@@ -49,7 +49,7 @@ app.get('/sites/list', (req, res) => {
     });
 });
 
-
+// API Endpoint to add site
 app.post('/site/add', (req, res) => {
     const { date, status, assignedElectricianId, other_info } = req.body;
 
@@ -77,9 +77,9 @@ app.post('/assign-electrician', (req, res) => {
     const currentDate = new Date().toISOString().split('T')[0]; // Extracting date part
 
     // Get all active electricians
-    // const activeElectriciansSQL = `SELECT id FROM electricians WHERE status = 'active'`;
+    const activeElectriciansSQL = `SELECT id FROM electricians WHERE status = 'active'`;
 
-    const activeElectriciansSQL = `SELECT * FROM electricians `;
+    // const activeElectriciansSQL = `SELECT * FROM electricians `;
 
     db.all(activeElectriciansSQL, [], (err, activeElectricians) => {
         if (err) {
@@ -101,8 +101,8 @@ app.post('/assign-electrician', (req, res) => {
                 return;
             }
 
-            console.log(availableSites,"availableSites")
-            console.log(activeElectricians,"activeElectricians")
+            console.log(availableSites, "availableSites")
+            console.log(activeElectricians, "activeElectricians")
 
 
             // Calculate the number of sites and active electricians
@@ -121,10 +121,15 @@ app.post('/assign-electrician', (req, res) => {
             let assignedSitesCount = 0;
             let electricianIndex = 0;
             activeElectricians.forEach((electrician) => {
+
                 const sitesToAssign = (electricianIndex < numSites % numElectricians) ? avgWorkload + 1 : avgWorkload;
+
                 const electricianId = electrician.id;
+
                 for (let i = 0; i < sitesToAssign; i++) {
+
                     const siteId = availableSites[assignedSitesCount++].id;
+
                     const assignSiteSQL = `UPDATE sites SET status = 'assigned', assigned_electrician_id = ? WHERE id = ?`;
                     db.run(assignSiteSQL, [electricianId, siteId], (err) => {
                         if (err) {
