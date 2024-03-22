@@ -25,6 +25,14 @@ app.post('/electrician/add', (req, res) => {
 
 app.post('/site/add', (req, res) => {
     const { date, status, assignedElectricianId, otherInfo } = req.body;
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+        res.status(400).json({ error: 'Invalid date format. Date should be in YYYY-MM-DD format.' });
+        return;
+    }
+
     const sql = `INSERT INTO sites (date, status, assigned_electrician_id, other_info) VALUES (?, ?, ?, ?)`;
     db.run(sql, [date, status, assignedElectricianId, otherInfo], function(err) {
         if (err) {
@@ -36,8 +44,12 @@ app.post('/site/add', (req, res) => {
     });
 });
 
+
 // Assign API for assigning electrician to site based on a given date
-app.post('/assign', (res) => {
+app.post('/assign', (req, res) => {
+    // Get current date
+    const currentDate = new Date().toISOString().split('T')[0]; // Extracting date part
+
     // Get all active electricians
     const activeElectriciansSQL = `SELECT id FROM electricians WHERE status = 'active'`;
     db.all(activeElectriciansSQL, [], (err, activeElectricians) => {
@@ -47,9 +59,9 @@ app.post('/assign', (res) => {
             return;
         }
 
-        // Get all available sites
-        const availableSitesSQL = `SELECT id FROM sites WHERE status = 'available'`;
-        db.all(availableSitesSQL, [], (err, availableSites) => {
+        // Get all available sites for the current date
+        const availableSitesSQL = `SELECT id FROM sites WHERE date = ? AND status = 'available'`;
+        db.all(availableSitesSQL, [currentDate], (err, availableSites) => {
             if (err) {
                 console.error('Error fetching available sites:', err.message);
                 res.status(500).json({ error: 'Internal server error' });
@@ -92,6 +104,7 @@ app.post('/assign', (res) => {
         });
     });
 });
+
 
 
 // Start the server
