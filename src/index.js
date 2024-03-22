@@ -23,6 +23,33 @@ app.post('/electrician/add', (req, res) => {
     });
 });
 
+// API Endpoint to get electricians list
+app.get('/electricians/list', (req, res) => {
+    const sql = `SELECT * FROM electricians`;
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error('Error retrieving electricians:', err.message);
+            res.status(500).json({ error: 'Internal server error' });
+            return;
+        }
+        res.status(200).json({ electricians: rows });
+    });
+});
+
+// API Endpoint to get electricians list
+app.get('/sites/list', (req, res) => {
+    const sql = `SELECT * FROM sites`;
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error('Error retrieving sites:', err.message);
+            res.status(500).json({ error: 'Internal server error' });
+            return;
+        }
+        res.status(200).json({ electricians: rows });
+    });
+});
+
+
 app.post('/site/add', (req, res) => {
     const { date, status, assignedElectricianId, other_info } = req.body;
 
@@ -52,7 +79,7 @@ app.post('/assign-electrician', (req, res) => {
     // Get all active electricians
     // const activeElectriciansSQL = `SELECT id FROM electricians WHERE status = 'active'`;
 
-
+    const activeElectriciansSQL = `SELECT * FROM electricians `;
 
     db.all(activeElectriciansSQL, [], (err, activeElectricians) => {
         if (err) {
@@ -61,8 +88,12 @@ app.post('/assign-electrician', (req, res) => {
             return;
         }
 
+
         // Get all available sites for the current date
         const availableSitesSQL = `SELECT id FROM sites WHERE date = ? AND status = 'pending'`;
+
+        // const availableSitesSQL = `SELECT * FROM sites`;
+
         db.all(availableSitesSQL, [currentDate], (err, availableSites) => {
             if (err) {
                 console.error('Error fetching available sites:', err.message);
