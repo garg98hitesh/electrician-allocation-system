@@ -1,7 +1,10 @@
 const sqlite3 = require('sqlite3').verbose();
 
+// Specify the filename for the SQLite database
+const DB_FILE = 'mydatabase.db';
+
 // Create database connection
-const db = new sqlite3.Database(':memory:'); // In-memory database for simplicity
+const db = new sqlite3.Database(DB_FILE);
 
 // Create tables
 db.serialize(() => {
