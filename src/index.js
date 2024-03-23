@@ -6,7 +6,6 @@ const db = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(bodyParser.json());
 
 // API Endpoints
@@ -36,7 +35,7 @@ app.get('/electricians/list', (req, res) => {
     });
 });
 
-// API Endpoint to get electricians list
+// API Endpoint to get sites list
 app.get('/sites/list', (req, res) => {
     const sql = `SELECT * FROM sites`;
     db.all(sql, [], (err, rows) => {
@@ -90,29 +89,23 @@ app.post('/assign-electrician', async (req, res) => {
         const avgWorkload = Math.floor(numSites / numElectricians);
         let assignedSitesCount = 0;
 
-        // Iterate over active electricians
         for (let i = 0; i < numElectricians; i++) {
             const electricianId = activeElectricians[i].id;
             const sitesToAssign = assignedSitesCount < numSites % numElectricians ? avgWorkload + 1 : avgWorkload;
 
-            // Assign sites to electricians
             for (let j = 0; j < sitesToAssign; j++) {
                 const siteId = availableSites[assignedSitesCount++].id;
 
-                // Update site status and assigned electrician
                 await db.run('UPDATE sites SET status = "assigned", assigned_electrician_id = ? WHERE id = ?', [electricianId, siteId]);
             }
         }
 
-        // Send success response
         res.status(200).json({ message: 'Sites assigned successfully' });
     } catch (err) {
         console.error('Error assigning sites:', err.message);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
-
 
 
 // Start the server
