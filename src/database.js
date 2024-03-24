@@ -12,7 +12,9 @@ db.serialize(() => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         status TEXT,
-        other_info TEXT
+        other_info TEXT,
+        state TEXT,
+        city TEXT
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS sites (
@@ -20,7 +22,9 @@ db.serialize(() => {
         date TEXT,
         status TEXT,
         assigned_electrician_id INTEGER,
-        other_info TEXT
+        other_info TEXT,
+        state TEXT,
+        city TEXT
     )`);
 });
 

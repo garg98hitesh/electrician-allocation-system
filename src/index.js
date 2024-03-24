@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./database');
+const geolib = require('geolib'); // Importing geolib library for distance calculation
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,15 +11,40 @@ app.use(bodyParser.json());
 
 // API Endpoints
 app.post('/electrician/add', (req, res) => {
-    const { name, status, other_info } = req.body;
-    const sql = `INSERT INTO electricians (name, status, other_info) VALUES (?, ?, ?)`;
-    db.run(sql, [name, status, other_info], function (err) {
+    const { name, status, other_info, state, city } = req.body;
+    const sql = `INSERT INTO electricians (name, status, other_info, state, city) VALUES (?, ?, ?, ?, ?)`;
+    const values = [name, status, JSON.stringify(other_info), state, city];
+
+    db.run(sql, values, function (err) {
         if (err) {
             console.error('Error inserting electrician:', err.message);
             res.status(500).json({ error: 'Internal server error' });
             return;
         }
-        res.status(201).json({ electrician_id: this.lastID, name, status, other_info });
+        res.status(201).json({ electrician_id: this.lastID, name, status, other_info, state, city });
+    });
+});
+
+app.post('/site/add', (req, res) => {
+    const { date, status, assignedElectricianId, other_info, state, city } = req.body;
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+        res.status(400).json({ error: 'Invalid date format. Date should be in YYYY-MM-DD format.' });
+        return;
+    }
+
+    const sql = `INSERT INTO sites (date, status, assigned_electrician_id, other_info, state, city) VALUES (?, ?, ?, ?, ?, ?)`;
+    const values = [date, status, assignedElectricianId, JSON.stringify(other_info), state, city];
+
+    db.run(sql, values, function (err) {
+        if (err) {
+            console.error('Error inserting site:', err.message);
+            res.status(500).json({ error: 'Internal server error' });
+            return;
+        }
+        res.status(201).json({ site_id: this.lastID, date, status, assignedElectricianId, other_info, state, city });
     });
 });
 
@@ -48,35 +74,10 @@ app.get('/sites/list', (req, res) => {
     });
 });
 
-// API Endpoint to add site
-app.post('/site/add', (req, res) => {
-    const { date, status, assignedElectricianId, other_info } = req.body;
-
-    // Validate date format (YYYY-MM-DD)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(date)) {
-        res.status(400).json({ error: 'Invalid date format. Date should be in YYYY-MM-DD format.' });
-        return;
-    }
-
-    const sql = `INSERT INTO sites (date, status, assigned_electrician_id, other_info) VALUES (?, ?, ?, ?)`;
-    db.run(sql, [date, status, assignedElectricianId, other_info], function (err) {
-        if (err) {
-            console.error('Error inserting site:', err.message);
-            res.status(500).json({ error: 'Internal server error' });
-            return;
-        }
-        res.status(201).json({ site_id: this.lastID, date, status, assignedElectricianId, other_info });
-    });
-});
-
-// Assign API for assigning electrician to site based on a given date
 app.post('/assign-electrician', (req, res) => {
-
     const currentDate = new Date().toISOString().split('T')[0];
 
-    // Get all active electricians
-    const activeElectriciansSQL = `SELECT id FROM electricians WHERE status = 'active'`;
+    const activeElectriciansSQL = `SELECT id, other_info FROM electricians WHERE status = 'active'`;
 
     db.all(activeElectriciansSQL, [], (err, activeElectricians) => {
         if (err) {
@@ -85,8 +86,7 @@ app.post('/assign-electrician', (req, res) => {
             return;
         }
 
-        // Get all available sites for the current date
-        const availableSitesSQL = `SELECT id FROM sites WHERE date = ? AND status = 'pending'`;
+        const availableSitesSQL = `SELECT id, other_info FROM sites WHERE date = ? AND status = 'pending'`;
 
         db.all(availableSitesSQL, [currentDate], (err, availableSites) => {
             if (err) {
@@ -95,39 +95,54 @@ app.post('/assign-electrician', (req, res) => {
                 return;
             }
 
-            // Calculate the number of sites and active electricians
-            const numSites = availableSites.length;
-            const numElectricians = activeElectricians.length;
-
-            if (numSites === 0 || numElectricians === 0) {
+            if (availableSites.length === 0 || activeElectricians.length === 0) {
                 res.status(400).json({ error: 'No available sites or active electricians' });
                 return;
             }
 
-            // Assign sites to electricians in a round-robin fashion
-            let electricianIndex = 0;
-
             availableSites.forEach(site => {
-                const electricianId = activeElectricians[electricianIndex].id;
+                activeElectricians.forEach(electrician => {
+                    if (electrician.other_info && site.other_info) {
 
-                const assignSiteSQL = `UPDATE sites SET status = 'assigned', assigned_electrician_id = ? WHERE id = ?`;
-                db.run(assignSiteSQL, [electricianId, site.id], (err) => {
-                    if (err) {
-                        console.error('Error assigning site:', err.message);
-                        res.status(500).json({ error: 'Internal server error' });
-                        return;
+                        const electricianCoords = JSON.parse(electrician.other_info);
+                        const siteCoords = JSON.parse(site.other_info);
+
+                        console.log(electricianCoords, "electricianCoords");
+                        console.log(siteCoords, "siteCoords");
+                        console.log(siteCoords.site_lat, "siteCoords")
+                        console.log(siteCoords.site_long, "siteCoords")
+                        console.log(siteCoords['site_long'], "abxc");
+                        console.log(typeof siteCoords); // Output the type of siteCoords (should be object)
+
+
+
+
+
+                        const distance = geolib.getDistance(
+                            { latitude: electricianCoords.residence_lat, longitude: electricianCoords.residence_long },
+                            { latitude: siteCoords.site_lat, longitude: siteCoords.long }
+                        );
+
+                        console.log(distance, "distance")
+
+                        if (distance <= 15000) { // Distance is in meters, so 15000 meters = 15 kilometers
+                            const assignSiteSQL = `UPDATE sites SET status = 'assigned', assigned_electrician_id = ? WHERE id = ?`;
+                            db.run(assignSiteSQL, [electrician.id, site.id], (err) => {
+                                if (err) {
+                                    console.error('Error assigning site:', err.message);
+                                    res.status(500).json({ error: 'Internal server error' });
+                                    return;
+                                }
+                            });
+                        }
                     }
                 });
-
-                // Move to the next electrician in a round-robin fashion
-                electricianIndex = (electricianIndex + 1) % numElectricians;
             });
 
             res.status(200).json({ message: 'Sites assigned successfully' });
         });
     });
 });
-
 
 
 // Start the server
