@@ -107,20 +107,9 @@ app.post('/assign-electrician', (req, res) => {
                         const electricianCoords = JSON.parse(electrician.other_info);
                         const siteCoords = JSON.parse(site.other_info);
 
-                        console.log(electricianCoords, "electricianCoords");
-                        console.log(siteCoords, "siteCoords");
-                        console.log(siteCoords.site_lat, "siteCoords")
-                        console.log(siteCoords.site_long, "siteCoords")
-                        console.log(siteCoords['site_long'], "abxc");
-                        console.log(typeof siteCoords); // Output the type of siteCoords (should be object)
-
-
-
-
-
                         const distance = geolib.getDistance(
                             { latitude: electricianCoords.residence_lat, longitude: electricianCoords.residence_long },
-                            { latitude: siteCoords.site_lat, longitude: siteCoords.long }
+                            { latitude: siteCoords.site_lat, longitude: siteCoords.site_long }
                         );
 
                         console.log(distance, "distance")
